@@ -106,6 +106,9 @@ class DeltaTextInputService extends TextInputService with DeltaTextInputClient {
   void connectionClosed() {}
 
   @override
+  bool onFocusReceived() => true;
+
+  @override
   void insertTextPlaceholder(Size size) {}
 
   @override
