@@ -183,8 +183,10 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
   @override
   void connectionClosed() {}
 
+  /// See [DeltaTextInputService.onFocusReceived]: this service does not
+  /// re-acquire focus either, so it reports `false` to match.
   @override
-  bool onFocusReceived() => true;
+  bool onFocusReceived() => false;
 
   @override
   void insertTextPlaceholder(Size size) {}

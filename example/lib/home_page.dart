@@ -436,8 +436,9 @@ class _HomePageState extends State<HomePage> {
       }
     } else {
       // for desktop
-      final path = await FilePicker.platform.saveFile(
+      final path = await FilePicker.saveFile(
         fileName: 'document.${fileType.extension}',
+        bytes: Uint8List.fromList(utf8.encode(result)),
       );
       if (path != null) {
         await File(path).writeAsString(result);
@@ -464,24 +465,22 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _importFile(ExportFileType fileType) async {
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
+    final file = await FilePicker.pickFile(
       allowedExtensions: [fileType.extension],
       type: FileType.custom,
     );
+    if (file == null) {
+      return;
+    }
     var plainText = '';
     if (!kIsWeb) {
-      final path = result?.files.single.path;
+      final path = file.path;
       if (path == null) {
         return;
       }
       plainText = await File(path).readAsString();
     } else {
-      final bytes = result?.files.first.bytes;
-      if (bytes == null) {
-        return;
-      }
-      plainText = const Utf8Decoder().convert(bytes);
+      plainText = const Utf8Decoder().convert(await file.readAsBytes());
     }
 
     var jsonString = '';

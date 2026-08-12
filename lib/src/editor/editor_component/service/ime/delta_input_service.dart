@@ -105,8 +105,12 @@ class DeltaTextInputService extends TextInputService with DeltaTextInputClient {
   @override
   void connectionClosed() {}
 
+  /// Fires when the platform moves focus back to this input, which only
+  /// happens for browser autofill (e.g. iOS Safari blurs then refocuses the
+  /// field). This service does not re-acquire focus in response, so it reports
+  /// `false` — the same answer as [TextInputClient]'s own default.
   @override
-  bool onFocusReceived() => true;
+  bool onFocusReceived() => false;
 
   @override
   void insertTextPlaceholder(Size size) {}
@@ -139,8 +143,6 @@ class DeltaTextInputService extends TextInputService with DeltaTextInputClient {
     TextInputControl? oldControl,
     TextInputControl? newControl,
   ) {}
-
-  bool onFocusReceived() => false;
 
   @override
   void performSelector(String selectorName) {

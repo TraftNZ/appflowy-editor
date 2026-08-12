@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 
 class FilePickerResult {
@@ -27,9 +29,13 @@ abstract class FilePickerService {
   }) async =>
       throw UnimplementedError('pickFiles() has not been implemented.');
 
+  /// [fileName] and [bytes] are required: on mobile the platform writes the
+  /// file itself and has nothing to write without them. On desktop the dialog
+  /// only returns the chosen path, so the caller still writes [bytes] there.
   Future<String?> saveFile({
+    required String fileName,
+    required Uint8List bytes,
     String? dialogTitle,
-    String? fileName,
     String? initialDirectory,
     FileType type = FileType.any,
     List<String>? allowedExtensions,
