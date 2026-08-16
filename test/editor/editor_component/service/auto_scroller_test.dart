@@ -133,4 +133,105 @@ void main() {
       },
     );
   });
+
+  group('AutoScroller convergence', () {
+    /// Builds a scrollable of exactly [viewportHeight] with 600px of content
+    /// and returns its state, so the drag target can be made deliberately
+    /// taller or shorter than the viewport.
+    Future<ScrollableState> buildSizedScrollable(
+      WidgetTester tester,
+      double viewportHeight,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              height: viewportHeight,
+              width: 300,
+              child: const SingleChildScrollView(
+                child: SizedBox(height: 600),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      return tester.state<ScrollableState>(find.byType(Scrollable).first);
+    }
+
+    // Regression test for an unbounded auto-scroll bounce.
+    //
+    // A drag target taller than the viewport overruns BOTH edges at once, so
+    // every pass scrolls towards one edge and the next pass scrolls straight
+    // back. Selection-driven auto scroll passes duration zero, so that bounce
+    // never yields to a frame: `_scroll` recursed through the microtask queue
+    // forever, pinning a core and growing the heap without bound. Upstream
+    // Flutter only catches this with a debug assert ("Drag target size is
+    // larger than scrollable size, which may cause bouncing"), which this fork
+    // had replaced with an empty if-block.
+    //
+    // A regression here manifests as a hang, not a failed expectation — there
+    // is no way to bound a starved microtask queue from inside a widget test.
+    testWidgets(
+      'a drag target taller than the viewport does not scroll at all',
+      (tester) async {
+        final scrollable = await buildSizedScrollable(tester, 120);
+        final scroller = AutoScroller(scrollable);
+        final viewport = tester.getRect(find.byType(SingleChildScrollView));
+
+        // 220 is the editor's default autoScrollEdgeOffset, well past the
+        // 120px viewport built above.
+        scroller.startAutoScroll(
+          viewport.center,
+          edgeOffset: 220,
+          duration: Duration.zero,
+        );
+
+        expect(
+          scroller.scrolling,
+          isFalse,
+          reason: 'the scroller must bail out instead of bouncing forever',
+        );
+        expect(scrollable.position.pixels, 0);
+
+        await tester.pump();
+        expect(scroller.scrolling, isFalse);
+        expect(scrollable.position.pixels, 0);
+      },
+    );
+
+    // The bounce guard clamps each pass to the distance still available before
+    // the opposite edge of the drag target leaves the viewport. This asserts
+    // the clamp does not disable auto scrolling outright in the ordinary case
+    // it exists to serve.
+    testWidgets(
+      'a drag target overrunning one edge still scrolls and then settles',
+      (tester) async {
+        final scrollable = await buildSizedScrollable(tester, 500);
+        final scroller = AutoScroller(scrollable);
+        final viewport = tester.getRect(find.byType(SingleChildScrollView));
+
+        // Centred near the bottom edge: the target's bottom overruns the
+        // viewport while its top stays inside, so there is real headroom.
+        scroller.startAutoScroll(
+          Offset(viewport.center.dx, viewport.bottom - 40),
+          duration: Duration.zero,
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          scrollable.position.pixels,
+          greaterThan(0),
+          reason: 'auto scroll must still reveal the overrunning edge',
+        );
+        expect(
+          scroller.scrolling,
+          isFalse,
+          reason: 'the scroll must terminate once the edge is revealed',
+        );
+      },
+    );
+  });
 }

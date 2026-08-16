@@ -323,6 +323,16 @@ class _PositionedListState extends State<PositionedList> {
     if (!updateScheduled) {
       updateScheduled = true;
       SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          // The list can be unmounted between scheduling this callback and the
+          // end of the frame. Everything below reads state this widget no
+          // longer owns — the enclosing ScrollablePositionedList disposes
+          // itemPositionsNotifier in its own dispose, so publishing positions
+          // here would use it after disposal.
+          updateScheduled = false;
+
+          return;
+        }
         final elements = registeredElements.value;
         if (elements == null) {
           updateScheduled = false;

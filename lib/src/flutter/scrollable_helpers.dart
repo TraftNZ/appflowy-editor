@@ -254,18 +254,6 @@ class EdgeDraggingAutoScroller {
           scrollRenderBox.size.height,
         ),
       );
-      final Rect transformedDragTarget = MatrixUtils.transformRect(
-        transform,
-        _dragTargetRelatedToScrollOrigin,
-      );
-
-      if ((globalRect.size.width + precisionErrorTolerance) >=
-              transformedDragTarget.size.width &&
-          (globalRect.size.height + precisionErrorTolerance) >=
-              transformedDragTarget.size.height) {
-        // do nothing.
-      }
-
       _scrolling = true;
       double? newOffset;
       const double overDragMax = 20.0;
@@ -286,6 +274,21 @@ class EdgeDraggingAutoScroller {
         _dragTargetRelatedToScrollOrigin.bottomRight,
         _scrollDirection,
       );
+
+      // How far the viewport may travel towards the end of the scrollable (or
+      // towards its start) before the opposite edge of the drag target leaves
+      // the viewport. Auto scrolling exists to reveal the edge that overruns
+      // the viewport; travelling past this point only swaps which edge is
+      // hidden, so the next pass scrolls straight back and the two undo each
+      // other for good. The animation duration is zero for editor selection
+      // changes, so that bounce never yields to a frame: it is an unbounded
+      // recursion, not visible jitter. A drag target taller than the viewport
+      // has negative headroom in both directions and so cannot scroll at all,
+      // which is the case upstream Flutter only asserts away in debug builds.
+      final double towardsEndHeadroom = proxyStart - viewportStart;
+      final double towardsStartHeadroom = viewportEnd - proxyEnd;
+      double headroom = double.infinity;
+
       switch (_axisDirection) {
         case AxisDirection.up:
         case AxisDirection.left:
@@ -295,6 +298,7 @@ class EdgeDraggingAutoScroller {
             final double overDrag =
                 math.min(proxyEnd - viewportEnd, overDragMax);
             final double delta = _smoothScrollDelta(overDrag);
+            headroom = towardsEndHeadroom;
             newOffset = math.max(
               scrollable.position.minScrollExtent,
               scrollable.position.pixels - delta,
@@ -305,6 +309,7 @@ class EdgeDraggingAutoScroller {
             final double overDrag =
                 math.min(viewportStart - proxyStart, overDragMax);
             final double delta = _smoothScrollDelta(overDrag);
+            headroom = towardsStartHeadroom;
             newOffset = math.min(
               scrollable.position.maxScrollExtent,
               scrollable.position.pixels + delta,
@@ -319,6 +324,7 @@ class EdgeDraggingAutoScroller {
             final double overDrag =
                 math.min(viewportStart - proxyStart, overDragMax);
             final double delta = _smoothScrollDelta(overDrag);
+            headroom = towardsStartHeadroom;
             newOffset = math.max(
               scrollable.position.minScrollExtent,
               scrollable.position.pixels - delta,
@@ -329,6 +335,7 @@ class EdgeDraggingAutoScroller {
             final double overDrag =
                 math.min(proxyEnd - viewportEnd, overDragMax);
             final double delta = _smoothScrollDelta(overDrag);
+            headroom = towardsEndHeadroom;
             newOffset = math.min(
               scrollable.position.maxScrollExtent,
               scrollable.position.pixels + delta,
@@ -344,26 +351,24 @@ class EdgeDraggingAutoScroller {
 
         return;
       }
+      final double maximumDelta = math.max(headroom, 0);
       double delta = newOffset - currentPixels;
+      if (delta.abs() > maximumDelta) {
+        delta = delta.sign * maximumDelta;
+      }
       if (delta.abs() < _minimumAutoScrollDelta) {
-        if (delta.abs() <= precisionErrorTolerance) {
-          _scrolling = false;
+        // Nudge a sub-pixel delta up to the minimum so the view keeps moving
+        // rather than stalling, but never past the headroom.
+        delta = delta.sign * math.min(_minimumAutoScrollDelta, maximumDelta);
+      }
+      newOffset = (currentPixels + delta).clamp(
+        scrollable.position.minScrollExtent,
+        scrollable.position.maxScrollExtent,
+      );
+      if ((newOffset - currentPixels).abs() <= precisionErrorTolerance) {
+        _scrolling = false;
 
-          return;
-        }
-        final double direction = delta.sign;
-        final double target =
-            (currentPixels + direction * _minimumAutoScrollDelta).clamp(
-          scrollable.position.minScrollExtent,
-          scrollable.position.maxScrollExtent,
-        );
-        newOffset = target.toDouble();
-        delta = newOffset - currentPixels;
-        if (delta.abs() <= precisionErrorTolerance) {
-          _scrolling = false;
-
-          return;
-        }
+        return;
       }
       await scrollable.position.moveTo(
         newOffset,
