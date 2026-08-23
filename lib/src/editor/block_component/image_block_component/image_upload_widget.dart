@@ -335,18 +335,17 @@ class _UploadImageMenuState extends State<UploadImageMenu> {
               dialogTitle: '',
               type: kIsWeb ? fp.FileType.custom : fp.FileType.image,
               allowedExtensions: kIsWeb ? allowedExtensions : null,
-              withData: kIsWeb,
             );
-            if (result != null && result.files.isNotEmpty) {
-              setState(() {
-                final bytes = result.files.first.bytes;
-                if (kIsWeb && bytes != null) {
-                  _imagePathOrContent = base64String(bytes);
-                } else {
-                  _imagePathOrContent = result.files.first.path;
-                }
-              });
-            }
+            if (result == null || result.files.isEmpty) return;
+            final file = result.files.first;
+            // On web there is no filesystem path, so the image is embedded as
+            // base64; elsewhere the path is enough.
+            final content =
+                kIsWeb ? base64String(await file.readAsBytes()) : file.path;
+            if (!mounted) return;
+            setState(() {
+              _imagePathOrContent = content;
+            });
           },
           child: Container(
             height: 60,

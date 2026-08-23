@@ -40,7 +40,7 @@ class FilePicker implements FilePickerService {
       lockParentWindow: lockParentWindow,
     );
 
-    return FilePickerResult(result?.files ?? []);
+    return FilePickerResult(result);
   }
 
   @override
@@ -52,15 +52,23 @@ class FilePicker implements FilePickerService {
     fp.FileType type = fp.FileType.any,
     List<String>? allowedExtensions,
     bool lockParentWindow = false,
-  }) {
-    return fp.FilePicker.saveFile(
+  }) async {
+    final savedUri = await fp.FilePicker.saveFile(
       dialogTitle: dialogTitle,
       fileName: fileName,
       bytes: bytes,
       initialDirectory: initialDirectory,
       type: type,
       allowedExtensions: allowedExtensions,
+      // ignore: deprecated_member_use
       lockParentWindow: lockParentWindow,
     );
+    if (savedUri == null) return null;
+    // The service reports a location as a string; a `file:` URI is reported as
+    // its path so callers can open it with dart:io, and any other scheme
+    // (`content:` on Android, `blob:` on web) is reported verbatim.
+    return savedUri.scheme == 'file'
+        ? savedUri.toFilePath()
+        : savedUri.toString();
   }
 }

@@ -29,9 +29,11 @@ abstract class FilePickerService {
   }) async =>
       throw UnimplementedError('pickFiles() has not been implemented.');
 
-  /// [fileName] and [bytes] are required: on mobile the platform writes the
-  /// file itself and has nothing to write without them. On desktop the dialog
-  /// only returns the chosen path, so the caller still writes [bytes] there.
+  /// [fileName] and [bytes] are required: every platform writes the file
+  /// itself and has nothing to write without them.
+  ///
+  /// Returns the saved location — a filesystem path where the platform gives
+  /// one, otherwise the URI it returned — or null if the user cancelled.
   Future<String?> saveFile({
     required String fileName,
     required Uint8List bytes,
