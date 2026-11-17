@@ -11,7 +11,9 @@ class FilePickerResult {
 
 /// Abstract file picker as a service to implement dependency injection.
 abstract class FilePickerService {
-  Future<String?> getDirectoryPath({String? title}) async =>
+  Future<String?> getDirectoryPath({
+    String? title,
+  }) async =>
       throw UnimplementedError('getDirectoryPath() has not been implemented.');
 
   Future<FilePickerResult?> pickFiles({
@@ -21,7 +23,8 @@ abstract class FilePickerService {
     List<String>? allowedExtensions,
     Function(FilePickerStatus)? onFileLoading,
     bool allowMultiple = false,
-  }) async => throw UnimplementedError('pickFiles() has not been implemented.');
+  }) async =>
+      throw UnimplementedError('pickFiles() has not been implemented.');
 
   /// [fileName] and [bytes] are required: every platform writes the file
   /// itself and has nothing to write without them.
@@ -33,5 +36,6 @@ abstract class FilePickerService {
     required Uint8List bytes,
     String? dialogTitle,
     String? initialDirectory,
-  }) async => throw UnimplementedError('saveFile() has not been implemented.');
+  }) async =>
+      throw UnimplementedError('saveFile() has not been implemented.');
 }
