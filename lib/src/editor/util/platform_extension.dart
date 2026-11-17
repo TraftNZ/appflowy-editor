@@ -1,12 +1,15 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:universal_html/html.dart' show window;
 import 'package:universal_platform/universal_platform.dart';
 
+// `dart:js_interop` exists in both web compilers (dart2js and dart2wasm);
+// `dart:html` does not exist under dart2wasm.
+import 'web_platform_stub.dart'
+    if (dart.library.js_interop) 'web_platform_web.dart';
+
 extension PlatformExtension on Platform {
-  static String get _webPlatform =>
-      window.navigator.platform?.toLowerCase() ?? '';
+  static String get _webPlatform => webNavigatorPlatform;
 
   /// Returns true if the operating system is macOS and not running on Web platform.
   static bool get isMacOS => UniversalPlatform.isMacOS;
